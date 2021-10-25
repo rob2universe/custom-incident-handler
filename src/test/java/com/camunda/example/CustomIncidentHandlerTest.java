@@ -1,44 +1,30 @@
 package com.camunda.example;
 
-import com.camunda.example.incident.MyFailedJobIncidentHandler;
-import com.camunda.example.incident.MyIncidentHandler;
 import com.camunda.example.service.MyDelegate;
+import com.camunda.example.service.RetryDelegate;
 import lombok.extern.slf4j.Slf4j;
-import org.camunda.bpm.engine.runtime.Incident;
 import org.camunda.bpm.engine.test.Deployment;
+import org.camunda.bpm.engine.test.ProcessEngineRule;
 import org.camunda.bpm.engine.test.mock.Mocks;
-import org.camunda.bpm.spring.boot.starter.test.helper.AbstractProcessEngineRuleTest;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.List;
-
-import static com.camunda.example.incident.MyIncidentHandler.INCIDENT_TYPE;
 import static org.camunda.bpm.engine.test.assertions.bpmn.BpmnAwareTests.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @Slf4j
-@Deployment(resources = "process.bpmn")
-public class CustomIncidentHandlerTest extends AbstractProcessEngineRuleTest {
+@Deployment(resources = {"process.bpmn", "incident-handling.bpmn"})
+public class CustomIncidentHandlerTest {
+
+  @Rule
+  public ProcessEngineRule engine = new ProcessEngineRule();
 
   @Before
   public void setUp() {
-
-/*
-    processEngine.getProcessEngineConfiguration().setProcessEnginePlugins(
-        List.of(new IncidentHandlerProcessEnginePlugin())
-    );
-*/
-// TODO figure out plugin registration for unit test
-    processEngine.getProcessEngineConfiguration().setCustomIncidentHandlers(List.of(
-        // existing standard incident types
-        new MyFailedJobIncidentHandler(Incident.FAILED_JOB_HANDLER_TYPE),
-        new MyFailedJobIncidentHandler(Incident.EXTERNAL_TASK_HANDLER_TYPE),
-        // custom incident type
-        new MyIncidentHandler(INCIDENT_TYPE))
-    );
-
     Mocks.register("myDelegate", new MyDelegate());
+    Mocks.register("retryDelegate", new RetryDelegate());
   }
 
   @Test
@@ -60,15 +46,15 @@ public class CustomIncidentHandlerTest extends AbstractProcessEngineRuleTest {
     assertEquals(job().getExceptionMessage(), MyDelegate.JOB_FAILED_MESSAGE);
     assertThat(pi).isWaitingAt("DoSomethingTask");
 
-
-    //TODO add back when handler registration works
-/*
-    assertThat(pi).isWaitingAt("HandleIncidentInSubProcessTask");
-    complete(task());
+    //restart after issue ahs been resolved
+    var ehPi = processInstanceQuery().processDefinitionKey("IncidentHandlingProcess").singleResult();
+    assertThat(ehPi).isWaitingAt("HandleIncidentTask");
+    complete(task("HandleIncidentTask"));
     assertThat(pi).isWaitingAt("DoSomethingTask");
     execute(job());
-    assertThat(pi).isWaitingAt("CheckTask");*/
+    assertThat(pi)
+        .hasPassed("DoSomethingTask")
+        .isWaitingAt("CheckTask")
+        .variables().containsEntry("error","resolved");
   }
-
-
 }

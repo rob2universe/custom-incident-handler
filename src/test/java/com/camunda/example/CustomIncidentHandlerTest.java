@@ -54,6 +54,7 @@ public class CustomIncidentHandlerTest extends AbstractProcessEngineRuleTest {
     try {
       execute(job());
     } catch (RuntimeException ex) {
+      log.debug("caught RuntimeException");
     }
     assertThat(job()).hasRetries(0).hasExceptionMessage();
     assertEquals(job().getExceptionMessage(), MyDelegate.JOB_FAILED_MESSAGE);

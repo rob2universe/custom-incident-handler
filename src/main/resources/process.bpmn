@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_0fr9mxs" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.8.0">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_0fr9mxs" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.10.0">
   <bpmn:process id="error-process" isExecutable="true">
-    <bpmn:startEvent id="StartEvent_1">
+    <bpmn:startEvent id="ProcessStartedStartEvent" name="Process started">
       <bpmn:extensionElements>
         <camunda:formData>
           <camunda:formField id="error" label="error" type="string" defaultValue="myincident" />
@@ -9,14 +9,18 @@
       </bpmn:extensionElements>
       <bpmn:outgoing>SequenceFlow_1fp17al</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:sequenceFlow id="SequenceFlow_1fp17al" sourceRef="StartEvent_1" targetRef="DoSomethingTask" />
-    <bpmn:endEvent id="EndEvent_0x6ir2l">
-      <bpmn:incoming>SequenceFlow_16gzt2m</bpmn:incoming>
+    <bpmn:sequenceFlow id="SequenceFlow_1fp17al" sourceRef="ProcessStartedStartEvent" targetRef="DoSomethingTask" />
+    <bpmn:endEvent id="RegularPathCompletedEndEvent" name="Regular path completed">
+      <bpmn:incoming>Flow_0w4aujp</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sequenceFlow id="SequenceFlow_16gzt2m" sourceRef="DoSomethingTask" targetRef="EndEvent_0x6ir2l" />
+    <bpmn:sequenceFlow id="SequenceFlow_16gzt2m" sourceRef="DoSomethingTask" targetRef="CheckTask" />
     <bpmn:serviceTask id="DoSomethingTask" name="Do something" camunda:asyncBefore="true" camunda:delegateExpression="${myDelegate}">
       <bpmn:extensionElements>
-        <camunda:failedJobRetryTimeCycle>R2/PT1S</camunda:failedJobRetryTimeCycle>
+        <camunda:failedJobRetryTimeCycle>R1/PT1S</camunda:failedJobRetryTimeCycle>
+        <camunda:properties>
+          <camunda:property name="signalIncident" value="true" />
+          <camunda:property name="signalName" value="Signal_IncidentForHandling" />
+        </camunda:properties>
       </bpmn:extensionElements>
       <bpmn:incoming>SequenceFlow_1fp17al</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_16gzt2m</bpmn:outgoing>
@@ -30,48 +34,82 @@
       <bpmn:outgoing>Flow_0gxdnm9</bpmn:outgoing>
     </bpmn:task>
     <bpmn:sequenceFlow id="Flow_0bpjvit" sourceRef="Event_0aixa1f" targetRef="HandleErrorTask" />
-    <bpmn:endEvent id="Event_0p6ho9l">
+    <bpmn:endEvent id="BPMNErrorHandledEndEvent" name="BPMN Error handled">
       <bpmn:incoming>Flow_0gxdnm9</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_0gxdnm9" sourceRef="HandleErrorTask" targetRef="Event_0p6ho9l" />
+    <bpmn:sequenceFlow id="Flow_0gxdnm9" sourceRef="HandleErrorTask" targetRef="BPMNErrorHandledEndEvent" />
+    <bpmn:sequenceFlow id="Flow_0w4aujp" sourceRef="CheckTask" targetRef="RegularPathCompletedEndEvent" />
+    <bpmn:userTask id="CheckTask" name="Check">
+      <bpmn:incoming>SequenceFlow_16gzt2m</bpmn:incoming>
+      <bpmn:outgoing>Flow_0w4aujp</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:textAnnotation id="TextAnnotation_04iih21">
+      <bpmn:text>Custom incident handler will only send Signal if extension property signalIncident is set and true and signal name is provided</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1wj99yx" sourceRef="DoSomethingTask" targetRef="TextAnnotation_04iih21" />
   </bpmn:process>
+  <bpmn:signal id="Signal_1q96etj" name="Signal_IncidentForHandling" />
+  <bpmn:message id="Message_0cnx9g2" name="Message_IncrementRetries" />
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="error-process">
+      <bpmndi:BPMNEdge id="Flow_0w4aujp_di" bpmnElement="Flow_0w4aujp">
+        <di:waypoint x="540" y="207" />
+        <di:waypoint x="622" y="207" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_0gxdnm9_di" bpmnElement="Flow_0gxdnm9">
-        <di:waypoint x="490" y="240" />
-        <di:waypoint x="542" y="240" />
+        <di:waypoint x="490" y="330" />
+        <di:waypoint x="542" y="330" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_0bpjvit_di" bpmnElement="Flow_0bpjvit">
-        <di:waypoint x="320" y="175" />
-        <di:waypoint x="320" y="240" />
-        <di:waypoint x="390" y="240" />
+        <di:waypoint x="320" y="265" />
+        <di:waypoint x="320" y="330" />
+        <di:waypoint x="390" y="330" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="SequenceFlow_16gzt2m_di" bpmnElement="SequenceFlow_16gzt2m">
-        <di:waypoint x="370" y="117" />
-        <di:waypoint x="432" y="117" />
+        <di:waypoint x="370" y="207" />
+        <di:waypoint x="440" y="207" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="SequenceFlow_1fp17al_di" bpmnElement="SequenceFlow_1fp17al">
-        <di:waypoint x="215" y="117" />
-        <di:waypoint x="270" y="117" />
+        <di:waypoint x="215" y="207" />
+        <di:waypoint x="270" y="207" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
-        <dc:Bounds x="179" y="99" width="36" height="36" />
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="ProcessStartedStartEvent">
+        <dc:Bounds x="179" y="189" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="159" y="232" width="77" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="EndEvent_0x6ir2l_di" bpmnElement="EndEvent_0x6ir2l">
-        <dc:Bounds x="432" y="99" width="36" height="36" />
+      <bpmndi:BPMNShape id="EndEvent_0x6ir2l_di" bpmnElement="RegularPathCompletedEndEvent">
+        <dc:Bounds x="622" y="189" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="609" y="232" width="63" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_0adwev7_di" bpmnElement="DoSomethingTask">
-        <dc:Bounds x="270" y="77" width="100" height="80" />
+        <dc:Bounds x="270" y="167" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_1siv4cd_di" bpmnElement="HandleErrorTask">
-        <dc:Bounds x="390" y="200" width="100" height="80" />
+        <dc:Bounds x="390" y="290" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Event_0p6ho9l_di" bpmnElement="Event_0p6ho9l">
-        <dc:Bounds x="542" y="222" width="36" height="36" />
+      <bpmndi:BPMNShape id="Event_0p6ho9l_di" bpmnElement="BPMNErrorHandledEndEvent">
+        <dc:Bounds x="542" y="312" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="530" y="355" width="60" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0ybwyju_di" bpmnElement="CheckTask">
+        <dc:Bounds x="440" y="167" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_04iih21_di" bpmnElement="TextAnnotation_04iih21">
+        <dc:Bounds x="370" y="80" width="190" height="68" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Event_16uzypv_di" bpmnElement="Event_0aixa1f">
-        <dc:Bounds x="302" y="139" width="36" height="36" />
+        <dc:Bounds x="302" y="229" width="36" height="36" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_1wj99yx_di" bpmnElement="Association_1wj99yx">
+        <di:waypoint x="356" y="167" />
+        <di:waypoint x="373" y="148" />
+      </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

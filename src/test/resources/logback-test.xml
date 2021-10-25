@@ -23,6 +23,7 @@
 -->
 
   <logger name="org.camunda.bpm.engine.test" level="debug" />
+  <logger name="com.camunda.example" level="debug" />
 
 <!--
   <logger name="org.camunda.bpm.engine.bpmn.parser" level="debug" />

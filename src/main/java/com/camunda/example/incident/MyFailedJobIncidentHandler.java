@@ -60,15 +60,13 @@ public class MyFailedJobIncidentHandler extends DefaultIncidentHandler implement
     if (signalIncident && null != signalName) {
       log.info("Sending signal {} ...", signalName);
       var executionId = context.getExecutionId();
-      String processInstanceId = runtimeService.createExecutionQuery()
-          .executionId(executionId).singleResult().getProcessInstanceId();
 
       ProcessInstance pi = (ProcessInstance) runtimeService.createExecutionQuery().executionId(executionId).singleResult();
 
       //create DTO
       ErrorForIncident errorForIncident = new ErrorForIncident();
       errorForIncident.setActivityId(context.getFailedActivityId());
-      errorForIncident.setProcessInstance(processInstanceId);
+      errorForIncident.setProcessInstance(pi.getId());
       errorForIncident.setErrorMessage(message);
       errorForIncident.setJobId(context.getJobDefinitionId());
       errorForIncident.setBusinessKey(pi.getBusinessKey());

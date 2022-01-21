@@ -29,7 +29,9 @@ public class CustomIncidentHandlerTest {
 
   @Test
   public void testMyFailedJobHandler() {
-    var pi = runtimeService().startProcessInstanceByKey("error-process", withVariables(MyDelegate.ERROR_DATA, MyDelegate.FAILED_JOB));
+    var pi = runtimeService().startProcessInstanceByKey("error-process",
+        "MY_BUSINESS_KEY1",
+        withVariables(MyDelegate.ERROR_DATA, MyDelegate.FAILED_JOB));
     assertThat(pi).isWaitingAt("DoSomethingTask");
     try {
       execute(job());

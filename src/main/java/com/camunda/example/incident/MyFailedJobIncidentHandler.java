@@ -10,6 +10,7 @@ import org.camunda.bpm.engine.impl.incident.DefaultIncidentHandler;
 import org.camunda.bpm.engine.impl.incident.IncidentContext;
 import org.camunda.bpm.engine.impl.incident.IncidentHandler;
 import org.camunda.bpm.engine.runtime.Incident;
+import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.variable.Variables;
 import org.camunda.bpm.engine.variable.value.ObjectValue;
 import org.camunda.bpm.model.bpmn.instance.Activity;
@@ -62,12 +63,16 @@ public class MyFailedJobIncidentHandler extends DefaultIncidentHandler implement
       String processInstanceId = runtimeService.createExecutionQuery()
           .executionId(executionId).singleResult().getProcessInstanceId();
 
+      ProcessInstance pi = (ProcessInstance) runtimeService.createExecutionQuery().executionId(executionId).singleResult();
+
       //create DTO
       ErrorForIncident errorForIncident = new ErrorForIncident();
       errorForIncident.setActivityId(context.getFailedActivityId());
       errorForIncident.setProcessInstance(processInstanceId);
       errorForIncident.setErrorMessage(message);
       errorForIncident.setJobId(context.getJobDefinitionId());
+      errorForIncident.setBusinessKey(pi.getBusinessKey());
+
       //serialize to JSON process data
       ObjectValue errorObj = Variables.objectValue(errorForIncident)
           .serializationDataFormat(Variables.SerializationDataFormats.JSON)

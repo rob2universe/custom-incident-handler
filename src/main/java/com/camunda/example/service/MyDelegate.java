@@ -4,8 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.engine.delegate.BpmnError;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
-import org.camunda.bpm.engine.impl.context.Context;
-import org.camunda.bpm.engine.runtime.Job;
 import org.springframework.stereotype.Component;
 
 @Slf4j

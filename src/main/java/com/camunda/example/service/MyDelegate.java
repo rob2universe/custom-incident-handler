@@ -11,11 +11,7 @@ import org.springframework.stereotype.Component;
 public class MyDelegate implements JavaDelegate {
 
   public static final String BPMN_ERROR = "bpmn";
-  public static final String FAILED_JOB = "failedjob";
-  public static final String MY_INCIDENT = "myincident";
   public static final String ERROR_DATA = "error";
-  public static final String MY_INCIDENT_MESSAGE = "MY_INCIDENT_MESSAGE!!!";
-  public static final String JOB_FAILED_MESSAGE = "Processing Failed - Incident";
 
   @Override
   public void execute(DelegateExecution execution) throws RuntimeException {
@@ -25,10 +21,8 @@ public class MyDelegate implements JavaDelegate {
     if (error != null && !error.equals("resolved")) {
       if (error.equals(BPMN_ERROR))
         throw new BpmnError("Processing Failed - BPMN");
-      if (error.equals(FAILED_JOB))
-        throw new RuntimeException(JOB_FAILED_MESSAGE);
-      if (error.equals(MY_INCIDENT)) {
-        throw new RuntimeException("Thrown error!");
+      else {
+        throw new RuntimeException("Error! " + error);
       }
     }
   }

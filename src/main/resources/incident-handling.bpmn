@@ -1,32 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_0fr9mxs" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.10.0">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_0fr9mxs" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.11.1">
   <bpmn:process id="IncidentHandlingProcess" name="Incident Handling" isExecutable="true">
     <bpmn:startEvent id="IncidentSignaledStartEvent" name="Incident signaled">
       <bpmn:outgoing>Flow_1vkeo6i</bpmn:outgoing>
       <bpmn:signalEventDefinition id="SignalEventDefinition_133qtrm" signalRef="Signal_1q96etj" />
     </bpmn:startEvent>
-    <bpmn:endEvent id="RetryTriggeredEndEvent" name="Retry triggered">
-      <bpmn:incoming>Flow_183eefu</bpmn:incoming>
-      <bpmn:messageEventDefinition id="MessageEventDefinition_0yfjm02" messageRef="Message_0cnx9g2" camunda:delegateExpression="${retryDelegate}" />
-    </bpmn:endEvent>
-    <bpmn:userTask id="HandleIncidentTask" name="Handle incident">
+    <bpmn:userTask id="HandleIncidentTask" name="Handle incident" camunda:formKey="">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="error" label="error" type="string" defaultValue="resolved" />
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0heitp3</bpmn:incoming>
       <bpmn:incoming>Flow_1vkeo6i</bpmn:incoming>
       <bpmn:outgoing>Flow_183eefu</bpmn:outgoing>
     </bpmn:userTask>
     <bpmn:sequenceFlow id="Flow_1vkeo6i" sourceRef="IncidentSignaledStartEvent" targetRef="HandleIncidentTask" />
-    <bpmn:sequenceFlow id="Flow_183eefu" sourceRef="HandleIncidentTask" targetRef="RetryTriggeredEndEvent" />
+    <bpmn:sequenceFlow id="Flow_183eefu" sourceRef="HandleIncidentTask" targetRef="TriggerRetryTask" />
+    <bpmn:boundaryEvent id="RetryFailedBoundaryEvent" name="Retry failed" attachedToRef="TriggerRetryTask">
+      <bpmn:outgoing>Flow_0heitp3</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_00uixng" errorRef="Error_1ywp8ep" camunda:errorCodeVariable="code" camunda:errorMessageVariable="message" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_0heitp3" sourceRef="RetryFailedBoundaryEvent" targetRef="HandleIncidentTask" />
+    <bpmn:sendTask id="TriggerRetryTask" name="Trigger retry" camunda:asyncBefore="true" camunda:delegateExpression="${retryDelegate}">
+      <bpmn:incoming>Flow_183eefu</bpmn:incoming>
+      <bpmn:outgoing>Flow_0r6bggy</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="IncidentResolvedEndEvent" name="Incident resolved">
+      <bpmn:incoming>Flow_0r6bggy</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0r6bggy" sourceRef="TriggerRetryTask" targetRef="IncidentResolvedEndEvent" />
   </bpmn:process>
   <bpmn:signal id="Signal_1q96etj" name="Signal_IncidentForHandling" />
   <bpmn:message id="Message_0cnx9g2" name="Message_IncrementRetries" />
+  <bpmn:error id="Error_1ywp8ep" name="Error_NotResolved" />
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="IncidentHandlingProcess">
-      <bpmndi:BPMNEdge id="Flow_1vkeo6i_di" bpmnElement="Flow_1vkeo6i">
-        <di:waypoint x="178" y="120" />
-        <di:waypoint x="230" y="120" />
+      <bpmndi:BPMNEdge id="Flow_0r6bggy_di" bpmnElement="Flow_0r6bggy">
+        <di:waypoint x="490" y="120" />
+        <di:waypoint x="532" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0heitp3_di" bpmnElement="Flow_0heitp3">
+        <di:waypoint x="420" y="178" />
+        <di:waypoint x="420" y="198" />
+        <di:waypoint x="300" y="198" />
+        <di:waypoint x="300" y="160" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_183eefu_di" bpmnElement="Flow_183eefu">
-        <di:waypoint x="330" y="120" />
-        <di:waypoint x="372" y="120" />
+        <di:waypoint x="350" y="120" />
+        <di:waypoint x="390" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1vkeo6i_di" bpmnElement="Flow_1vkeo6i">
+        <di:waypoint x="178" y="120" />
+        <di:waypoint x="250" y="120" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Event_0k0yk89_di" bpmnElement="IncidentSignaledStartEvent">
         <dc:Bounds x="142" y="102" width="36" height="36" />
@@ -34,14 +60,23 @@
           <dc:Bounds x="119" y="145" width="83" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Event_036io3x_di" bpmnElement="RetryTriggeredEndEvent">
-        <dc:Bounds x="372" y="102" width="36" height="36" />
+      <bpmndi:BPMNShape id="Activity_14qfetj_di" bpmnElement="HandleIncidentTask">
+        <dc:Bounds x="250" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_14wf5cn_di" bpmnElement="TriggerRetryTask">
+        <dc:Bounds x="390" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_19ls0m5_di" bpmnElement="IncidentResolvedEndEvent">
+        <dc:Bounds x="532" y="102" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="354" y="145" width="73" height="14" />
+          <dc:Bounds x="508" y="145" width="84" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_14qfetj_di" bpmnElement="HandleIncidentTask">
-        <dc:Bounds x="230" y="80" width="100" height="80" />
+      <bpmndi:BPMNShape id="Event_1003sh9_di" bpmnElement="RetryFailedBoundaryEvent">
+        <dc:Bounds x="402" y="142" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="342" y="185" width="56" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

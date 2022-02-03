@@ -3,13 +3,17 @@ package com.camunda.example.incident;
 import com.camunda.example.dto.ErrorForIncident;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.camunda.bpm.engine.HistoryService;
+import org.camunda.bpm.engine.ManagementService;
 import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.RuntimeService;
+import org.camunda.bpm.engine.history.HistoricJobLog;
 import org.camunda.bpm.engine.impl.context.Context;
 import org.camunda.bpm.engine.impl.incident.DefaultIncidentHandler;
 import org.camunda.bpm.engine.impl.incident.IncidentContext;
 import org.camunda.bpm.engine.impl.incident.IncidentHandler;
 import org.camunda.bpm.engine.runtime.Incident;
+import org.camunda.bpm.engine.runtime.Job;
 import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.variable.Variables;
 import org.camunda.bpm.engine.variable.value.ObjectValue;
@@ -34,53 +38,62 @@ public class MyFailedJobIncidentHandler extends DefaultIncidentHandler implement
   @Override
   public Incident handleIncident(IncidentContext context, String message) {
     RuntimeService runtimeService = Context.getProcessEngineConfiguration().getRuntimeService();
+    ManagementService managementService = Context.getProcessEngineConfiguration().getManagementService();
     RepositoryService repositoryService = Context.getProcessEngineConfiguration().getRepositoryService();
 
     activityIds.add(context.getActivityId());
     log.info("MY_FAILED_JOB_INCIDENT: " + message);
 
     var modelinstance = repositoryService.getBpmnModelInstance(context.getProcessDefinitionId());
-    Activity activity = modelinstance.getModelElementById(context.getFailedActivityId());
-    var camProps = activity.getExtensionElements().getElementsQuery()
-        .filterByType(CamundaProperties.class).singleResult();
-    boolean signalIncident = false;
-    String signalName = null;
+    if(context.getFailedActivityId() !=null) {
+      Activity activity = modelinstance.getModelElementById(context.getFailedActivityId());
+      var camProps = activity.getExtensionElements().getElementsQuery()
+          .filterByType(CamundaProperties.class).singleResult();
+      boolean signalIncident = false;
+      String signalName = null;
 
-    // read extension properties
-    if (camProps != null) {
-      for (CamundaProperty prop : camProps.getCamundaProperties()) {
-        log.debug("Camunda property {} with value {}", prop.getCamundaName(), prop.getCamundaValue());
-        if (prop.getCamundaName().equals("signalIncident") && Boolean.parseBoolean(prop.getCamundaValue()))
-          signalIncident = true;
-        if (prop.getCamundaName().equals("signalName"))
-          signalName = prop.getCamundaValue();
+      // read extension properties
+      if (camProps != null) {
+        for (CamundaProperty prop : camProps.getCamundaProperties()) {
+          log.debug("Camunda property {} with value {}", prop.getCamundaName(), prop.getCamundaValue());
+          if (prop.getCamundaName().equals("signalIncident") && Boolean.parseBoolean(prop.getCamundaValue()))
+            signalIncident = true;
+          if (prop.getCamundaName().equals("signalName"))
+            signalName = prop.getCamundaValue();
+        }
       }
-    }
-    // if signalIncident extension property is set to true and signal name is set, send signal
-    if (signalIncident && null != signalName) {
-      log.info("Sending signal {} ...", signalName);
-      var executionId = context.getExecutionId();
 
-      ProcessInstance pi = (ProcessInstance) runtimeService.createExecutionQuery().executionId(executionId).singleResult();
+      // if signalIncident extension property is set to true and signal name is set, send signal
+      if (signalIncident && null != signalName) {
+        log.info("Sending signal {} ...", signalName);
+        var executionId = context.getExecutionId();
 
-      //create DTO
-      ErrorForIncident errorForIncident = new ErrorForIncident();
-      errorForIncident.setActivityId(context.getFailedActivityId());
-      errorForIncident.setProcessInstance(pi.getId());
-      errorForIncident.setErrorMessage(message);
-      errorForIncident.setJobId(context.getJobDefinitionId());
-      errorForIncident.setBusinessKey(pi.getBusinessKey());
+        ProcessInstance pi = (ProcessInstance) runtimeService.createExecutionQuery().executionId(executionId).singleResult();
 
-      //serialize to JSON process data
-      ObjectValue errorObj = Variables.objectValue(errorForIncident)
-          .serializationDataFormat(Variables.SerializationDataFormats.JSON)
-          .create();
-      log.info("errorForIncident object created: {}", errorObj);
+        Job job = managementService.createJobQuery()
+            .jobDefinitionId(context.getJobDefinitionId())
+            .executionId(executionId)
+            .singleResult();
 
-      //send Signal with error info as payload
-      runtimeService.createSignalEvent(signalName)
-          .setVariables(Map.of("errorForIncident", errorObj))
-          .send();
+        //create DTO
+        ErrorForIncident errorForIncident = new ErrorForIncident();
+        errorForIncident.setActivityId(context.getFailedActivityId());
+        errorForIncident.setProcessInstance(pi.getId());
+        errorForIncident.setErrorMessage(message);
+        errorForIncident.setJobId(job.getId());
+        errorForIncident.setBusinessKey(pi.getBusinessKey());
+
+        //serialize to JSON process data
+        ObjectValue errorObj = Variables.objectValue(errorForIncident)
+            .serializationDataFormat(Variables.SerializationDataFormats.JSON)
+            .create();
+        log.info("errorForIncident object created: {}", errorObj);
+
+        //send Signal with error info as payload
+        runtimeService.createSignalEvent(signalName)
+            .setVariables(Map.of("errorForIncident", errorObj))
+            .send();
+      }
     }
 
     return super.handleIncident(context, message);

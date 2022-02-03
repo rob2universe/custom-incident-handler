@@ -11,5 +11,4 @@ public class ErrorForIncident implements Serializable {
   private String errorMessage;
   private String jobId;
   private String businessKey;
-
 }

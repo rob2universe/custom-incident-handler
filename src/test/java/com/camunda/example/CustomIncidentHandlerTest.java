@@ -44,6 +44,7 @@ public class CustomIncidentHandlerTest {
       log.info("Exception with Message: {}", ex.getMessage());
       assertEquals(ex.getMessage(), JOB_FAILED_MESSAGE);
     }
+    // 1 retry defined
     try {
       execute(job());
     } catch (RuntimeException ex) {
@@ -57,8 +58,8 @@ public class CustomIncidentHandlerTest {
     var ehPi = processInstanceQuery().processDefinitionKey("IncidentHandlingProcess").singleResult();
     assertThat(ehPi).isWaitingAt("HandleIncidentTask");
     complete(task("HandleIncidentTask"), Map.of("error","resolved"));
-//    assertThat(pi).isWaitingAt("DoSomethingTask");
 //    execute(job());
+    assertThat(ehPi).hasPassed("TriggerRetryTask").isEnded();
     assertThat(pi)
         .hasPassed("DoSomethingTask")
         .isWaitingAt("CheckTask")
@@ -70,7 +71,7 @@ public class CustomIncidentHandlerTest {
   public void testMyFailedJobHandlerRepeatedFailure() {
     var pi = runtimeService().startProcessInstanceByKey("error-process",
         "MY_BUSINESS_KEY1",
-        withVariables(MyDelegate.ERROR_DATA, "still failing"));
+        withVariables(MyDelegate.ERROR_DATA, "jobFailed"));
     assertThat(pi).isWaitingAt("DoSomethingTask");
     try {
       execute(job());
@@ -90,13 +91,36 @@ public class CustomIncidentHandlerTest {
     //restart after issue ahs been resolved
     var ehPi = processInstanceQuery().processDefinitionKey("IncidentHandlingProcess").singleResult();
     assertThat(ehPi).isWaitingAt("HandleIncidentTask");
-    complete(task("HandleIncidentTask"), Map.of("error","failedjob"));
-//    assertThat(pi).isWaitingAt("DoSomethingTask");
+    complete(task("HandleIncidentTask"), Map.of("error","still failing"));
 //    execute(job());
     assertThat(pi)
         .isNotWaitingAt("CheckTask")
         .isWaitingAt("DoSomethingTask");
+  }
 
-    assertThat(ehPi).hasPassed("RetryFailedBoundaryEvent").isWaitingAt("HandleIncidentTask");
+  @Test
+  public void testMyFailedJobHandlerWithoutExtensionProperties() {
+    var pi = runtimeService().createProcessInstanceByKey("error-process")
+            .businessKey("MY_BUSINESS_KEY2")
+            .setVariables(withVariables(MyDelegate.ERROR_DATA, "jobFailed"))
+            .startBeforeActivity("DoSomethingFailingWithoutExtensionPropertiesTask")
+            .execute();
+    assertThat(pi).isWaitingAt("DoSomethingFailingWithoutExtensionPropertiesTask");
+    try {
+      execute(job());
+    } catch (RuntimeException ex) {
+      log.info("Exception with Message: {}", ex.getMessage());
+      assertEquals(ex.getMessage(), JOB_FAILED_MESSAGE);
+    }
+    // 1 retry defined
+    try {
+      execute(job());
+    } catch (RuntimeException ex) {
+      log.debug("caught RuntimeException");
+    }
+    assertThat(job()).hasRetries(0).hasExceptionMessage();
+    assertEquals(job().getExceptionMessage(), JOB_FAILED_MESSAGE);
+    assertThat(pi).isWaitingAt("DoSomethingFailingWithoutExtensionPropertiesTask");
+
   }
 }

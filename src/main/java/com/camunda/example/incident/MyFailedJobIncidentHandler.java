@@ -17,6 +17,7 @@ import org.camunda.bpm.engine.runtime.Job;
 import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.variable.Variables;
 import org.camunda.bpm.engine.variable.value.ObjectValue;
+import org.camunda.bpm.model.bpmn.BpmnModelException;
 import org.camunda.bpm.model.bpmn.instance.Activity;
 import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperties;
 import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperty;
@@ -33,7 +34,7 @@ public class MyFailedJobIncidentHandler extends DefaultIncidentHandler implement
   }
 
   @Getter
-  private List<String> activityIds = new ArrayList<>();
+  private final List<String> activityIds = new ArrayList<>();
 
   @Override
   public Incident handleIncident(IncidentContext context, String message) {
@@ -46,21 +47,29 @@ public class MyFailedJobIncidentHandler extends DefaultIncidentHandler implement
 
     var modelinstance = repositoryService.getBpmnModelInstance(context.getProcessDefinitionId());
     if(context.getFailedActivityId() !=null) {
-      Activity activity = modelinstance.getModelElementById(context.getFailedActivityId());
-      var camProps = activity.getExtensionElements().getElementsQuery()
-          .filterByType(CamundaProperties.class).singleResult();
+
+      CamundaProperties camProps;
       boolean signalIncident = false;
       String signalName = null;
-
-      // read extension properties
-      if (camProps != null) {
-        for (CamundaProperty prop : camProps.getCamundaProperties()) {
-          log.debug("Camunda property {} with value {}", prop.getCamundaName(), prop.getCamundaValue());
-          if (prop.getCamundaName().equals("signalIncident") && Boolean.parseBoolean(prop.getCamundaValue()))
-            signalIncident = true;
-          if (prop.getCamundaName().equals("signalName"))
-            signalName = prop.getCamundaValue();
-        }
+      Activity activity = modelinstance.getModelElementById(context.getFailedActivityId());
+      // if extension properties exist use them
+      try {
+        camProps = activity.getExtensionElements().getElementsQuery()
+          .filterByType(CamundaProperties.class).singleResult();
+        // read extension properties
+        if (camProps != null) {
+            for (CamundaProperty prop : camProps.getCamundaProperties()) {
+              log.debug("Camunda property {} with value {}", prop.getCamundaName(), prop.getCamundaValue());
+              if (prop.getCamundaName().equals("signalIncident") && Boolean.parseBoolean(prop.getCamundaValue()))
+                  signalIncident = true;
+              if (prop.getCamundaName().equals("signalName"))
+                      signalName = prop.getCamundaValue();
+              }
+          }
+      }
+      catch (BpmnModelException e)
+      {
+          log.debug("No extension elements found on failed activity with id: {}", context.getFailedActivityId());
       }
 
       // if signalIncident extension property is set to true and signal name is set, send signal
